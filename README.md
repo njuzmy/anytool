@@ -1,2 +1,2 @@
-# anytool
+# Anytool
 This is a tool used for measuring anycast deployment.
