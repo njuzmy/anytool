@@ -15,7 +15,7 @@ from ripe.atlas.cousteau import (
 from geopy.distance import great_circle
 
 class Measurement:
-    def __init__(self, key_lst, target=[], ):
+    def __init__(self, key_lst=[], target=[]):
         self.key_lst = key_lst
         self.target = target
         self.mtr_mid = []
@@ -88,7 +88,7 @@ class Measurement:
         with open(f"../dataset/srprobe_lst/{filename}") as f:
             content = f.read()
         srprobe_lst = [int(x) for x in content.split()]
-
+        print("get probes done, running measurement")
         probe_lst = np.array_split(srprobe_lst, 12)   #make sure number of probes of each splited list is less than 1000
 
         self.mtr_mid = []
@@ -102,12 +102,16 @@ class Measurement:
                 if mid != "fail":
                     self.mtr_mid.append(mid)
                 else:
-                    print("measurement fail")
+                    print(f"measurement fail, your measurement id is {self.mtr_mid}")
+        print("measurement done!")
         # if len(mtr_mid) == 0:
         #     with open(f"../dataset/measurement_id/{filename}", "w+") as f:
         #         f.write(" ".join(map(str,sprobe_lst)))
         #     return sprobe_lst
         return
+    
+    def getmtrid(self, mtr_lst=[]):
+        self.mtr_mid = mtr_lst
 
     def result(self):
         def ProcessTrace(in_result):
@@ -151,9 +155,12 @@ class Measurement:
         """
         preprocess the data and transform it into dataframe
         """
-        self.measurement()
+        if len(self.mtr_mid) == 0:
+            self.measurement()
+            if len(self.mtr_mid) == 0:
+                return 
         measure_pd_lst = []
-        for i in range(self.mtr_mid):
+        for i in range(len(self.mtr_mid)):
             measure_pd_lst.append(pd.read_json("https://atlas.ripe.net/api/v2/measurements/%s/results/?format=json&filename=RIPE-Atlas-measurement-%s.json" % (self.mtr_mid[i], self.mtr_mid[i])))
         self.measure_pd = pd.concat(measure_pd_lst).reset_index()
         self.measure_pd['reduce_hop'] = self.measure_pd.apply(lambda x: ProcessTrace(x['result']), axis=1)
