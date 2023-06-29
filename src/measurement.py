@@ -5,19 +5,17 @@ import datetime
 import numpy as np
 from ripe.atlas.cousteau import (
   Ping,
-  Dns,
-  Probe,
   Traceroute,
   AtlasSource,
-  AtlasCreateRequest,
-  AtlasResultsRequest
+  AtlasCreateRequest
 )
 from geopy.distance import great_circle
 
 class Measurement:
-    def __init__(self, key_lst=[], target=[]):
+    def __init__(self, target=[], prb_lst=[], key_lst=[]):
         self.key_lst = key_lst
         self.target = target
+        self.prb_lst = prb_lst
         self.mtr_mid = []
 
 
@@ -42,19 +40,21 @@ class Measurement:
 
         self.valid_probe_pd = pd.DataFrame(valid_probes)
         self.valid_probe_pd["stable"] = self.valid_probe_pd['tags'].apply(lambda x: findStableTag(x))  #find all stable probe
-        self.valid_probe_pd["location"] = self.valid_probe_pd.apply(lambda x:[x['latitude'], x['longitude']], axis=1)
-        sprobe_lst = self.valid_probe_pd[self.valid_probe_pd['stable']==True]['id'].to_list()
+        self.valid_probe_pd["location"] = self.valid_probe_pd["geometry"].str['coordinates']
+        # sprobe_lst = self.valid_probe_pd[self.valid_probe_pd['stable']==True]['id'].to_list()
 
         filename = datetime.date.today().strftime("%Y-%m-%d")
-        with open(f"../dataset/srprobe_lst/{filename}", "w+") as f:
-            f.write(" ".join(map(str,sprobe_lst)))
-        return 
+        self.valid_probe_pd.to_csv(f"../dataset/srprobe_lst/{filename}")
+        return
+        # with open(f"../dataset/srprobe_lst/{filename}", "w+") as f:
+        #     f.write(" ".join(map(str,sprobe_lst)))
+        # return 
 
-    def traceroute(self,ip,pre_list, num, api_key):      #using ripe atlas to traceroute
+    def traceroute(self,ip,pre_list, api_key):      #using ripe atlas to traceroute
         traceroute = Traceroute(
             af=4,
             target=ip,
-            description="traceroute to",
+            description=f"traceroute to {ip}",
             protocol="ICMP",
             resolve_on_probe=True
         )
@@ -62,7 +62,7 @@ class Measurement:
         source3 = AtlasSource(
             type="probes",
             value=pre_list,
-            requested=num
+            requested=len(pre_list)
         )
 
         atlas_request = AtlasCreateRequest(
@@ -80,40 +80,74 @@ class Measurement:
         else:
             print(response)
             return 'fail'
+        
+    def ping(self,ip,pre_list,api_key):
 
-    def measurement(self):
-        self.get_probe()
-        files = os.listdir("../dataset/srprobe_lst/")
-        filename = files.sort()[0]                      # get the latest rsprobe_lst
-        with open(f"../dataset/srprobe_lst/{filename}") as f:
-            content = f.read()
-        srprobe_lst = [int(x) for x in content.split()]
-        print("get probes done, running measurement")
-        probe_lst = np.array_split(srprobe_lst, 12)   #make sure number of probes of each splited list is less than 1000
+        ping = Ping(
+            af = 4,
+            target=ip,
+            description=f"ping to {ip}",
+            protocol="ICMP", 
+            resolve_on_probe=True
+        )
+        
+        source3 = AtlasSource(
+            type="probes",
+            value=pre_list,
+            requested=len(pre_list)
+        )
+
+        atlas_request = AtlasCreateRequest(
+            key=api_key,
+            measurements=[ping],
+            sources=[source3],
+            is_oneoff=True
+        )
+        (is_success,response) = atlas_request.create()
+        if is_success:
+            return response['measurements'][0]        #return msm
+        else:
+            print(response)
+            return 'fail'
+
+    def measurement(self,fn):
+        if len(self.prb_lst) != 0:
+            num = len(self.prb_lst) / 1000
+            probe_lst = np.array_split(self.prb_lst, num + 1)
+            files = os.listdir("../dataset/srprobe_lst/")
+            filename = sorted(files, reverse=True)[0]                      # get the latest rsprobe_lst, get valid_probe_pd
+            self.valid_probe_pd = pd.read_csv(f"../dataset/srprobe_lst/{filename}", index_col=0)
+        else:
+            self.get_probe()
+            print("get probes done, running measurement")
+            srprobe_lst = self.valid_probe_pd[self.valid_probe_pd['stable']==True]['id'].to_list()
+            num = len(srprobe_lst) / 1000
+            probe_lst = np.array_split(srprobe_lst, num+1)   #make sure number of probes of each splited list is less than 1000
 
         self.mtr_mid = []
         i = 0
         for ip in self.target:
-            mid = "fail"
             for split_probe in probe_lst:
+                mid = "fail"
                 while mid == "fail" and i < len(self.key_lst):
-                    mid = self.traceroute(ip, ",".join([str(x) for x in split_probe]), len(split_probe), self.key_lst[i])
+                    mid = fn(ip, ",".join([str(x) for x in split_probe]), self.key_lst[i])
                     i = i + 1
                 if mid != "fail":
                     self.mtr_mid.append(mid)
                 else:
-                    print(f"measurement fail, your measurement id is {self.mtr_mid}")
+                    print(f"measurement fail, your finished measurement id is {self.mtr_mid}")
         print("measurement done!")
         # if len(mtr_mid) == 0:
         #     with open(f"../dataset/measurement_id/{filename}", "w+") as f:
         #         f.write(" ".join(map(str,sprobe_lst)))
         #     return sprobe_lst
-        return
+        return self.mtr_mid
     
-    def getmtrid(self, mtr_lst=[]):
+    def getmtrid(self, mtr_lst=[]):        #assign the measurement_id instead of running a new round measurement
+        self.get_probe()
         self.mtr_mid = mtr_lst
 
-    def result(self):
+    def tr_result(self):
         def ProcessTrace(in_result):
             ret_lst = []
             if 'error' in in_result[0]:
@@ -156,9 +190,10 @@ class Measurement:
         preprocess the data and transform it into dataframe
         """
         if len(self.mtr_mid) == 0:
-            self.measurement()
-            if len(self.mtr_mid) == 0:
-                return 
+            # self.measurement()
+            # if len(self.mtr_mid) == 0:
+            #     return 
+            print("Please first run measurement!")
         measure_pd_lst = []
         for i in range(len(self.mtr_mid)):
             measure_pd_lst.append(pd.read_json("https://atlas.ripe.net/api/v2/measurements/%s/results/?format=json&filename=RIPE-Atlas-measurement-%s.json" % (self.mtr_mid[i], self.mtr_mid[i])))
@@ -169,4 +204,8 @@ class Measurement:
         self.measure_pd['p_rtt'] = self.measure_pd['reduce_hop'].str[-2].str['rtt']
         self.measure_pd = self.measure_pd[(~pd.isna(self.measure_pd['reduce_hop'])) & (self.measure_pd['reduce_hop'].str[-1].str['ip'].isin(self.target))]
         
-
+    def ping_result(self):
+        measure_pd_lst = []
+        for i in range(len(self.mtr_mid)):
+            measure_pd_lst.append(pd.read_json("https://atlas.ripe.net/api/v2/measurements/%s/results/?format=json&filename=RIPE-Atlas-measurement-%s.json" % (self.mtr_mid[i], self.mtr_mid[i])))
+        self.measure_pd = pd.concat(measure_pd_lst).reset_index()

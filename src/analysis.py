@@ -3,6 +3,7 @@ import socket
 import geoip2.database
 import requests
 import measurement
+import subprocess
 from geopy.distance import great_circle
 from geopy.geocoders import Nominatim
 
@@ -29,12 +30,15 @@ class analysis:
         else:
             print("Please specify the CDN you want to measure")
             raise
-        self.measure = measurement.Measurement(key_lst, target)
+        self.measure = measurement.Measurement(target=target, key_lst=key_lst)
         if len(mtr_lst) != 0:
             self.measure.getmtrid(mtr_lst)
-        self.measure.result()                # get result pd
+        else:
+            self.measure.measurement(self.measure.traceroute)
+        self.measure.tr_result()                # get measurement's result pd
         self.mapping_dc_lst = []             # how many dc are mapped with phop
         self.repr_phop = {}                  # which phop can represent the site
+        self.key_lst = key_lst               # store the key_lst
         
 
     def geolocate(self):     #geolocate the pen-hop 
@@ -78,8 +82,8 @@ class analysis:
                 i = 0
                 loc = []
                 while(i < len(prb_pd) and len(loc) == 0):
-                    cur_prb = self.measure_pd[self.measure_pd['p_hop'] == phop].sort_values('p_rtt').iloc[i]
-                    loc = self.valid_probe_pd[self.valid_probe_pd['id'] == cur_prb["prb_id"]]['location'].to_list()
+                    cur_prb = self.measure.measure_pd[self.measure.measure_pd['p_hop'] == phop].sort_values('p_rtt').iloc[i]
+                    loc = self.measure.valid_probe_pd[self.measure.valid_probe_pd['id'] == cur_prb["prb_id"]]['location'].to_list()
                     i += 1
                 if len(loc) > 0:
                     return (loc[0][::-1], cur_prb['p_rtt'])
@@ -92,7 +96,7 @@ class analysis:
             try:
                 geos = [data["rdns-geo"], data["ipinfo-geo"], data["maxmind-geo"]]
                 if data['nearest_prb_loc'] != None:
-                    lat,lon = lat,lon = data['nearest_prb_loc'][0][0], data['nearest_prb_loc'][0][1]
+                    lat,lon = data['nearest_prb_loc'][0][0], data['nearest_prb_loc'][0][1]
                     dist = []
                     for each in geos:
                         if each != None:
@@ -151,6 +155,22 @@ class analysis:
         except Exception as e:
             print(e)
             print("something error when mapping sites")
+    
+    def check_ip_ping(ip):
+        p = subprocess.Popen([r'bash ping.sh',ip],stdout=subprocess.PIPE)
+        result = p.stdout.read()
+        if result =='1\n':
+            return False
+        else:
+            return True
+        
+    def bogonip(ip):
+        bogon_ip_range=["0.0.0.0/8","10.0.0.0/8","100.64.0.0/10","127.0.0.0/8","127.0.53.53","169.254.0.0/16","172.16.0.0/12","192.0.0.0/24","192.0.2.0/24","192.168.0.0/16","198.18.0.0/15","198.51.100.0/24","203.0.113.0/24","224.0.0.0/4","240.0.0.0/4","255.255.255.255/32"]
+        for ran in bogon_ip_range:
+            if ip in IP(ran):
+                return True
+        return False
+        
 
     def reprePhop(self):         #we want to know which phop is close enough to be unicast representatives
         self.repr_phop = {}
@@ -160,24 +180,91 @@ class analysis:
                 site_lat, site_lon = phop['mapped_site'].split('|')[-1].split(',')
                 mapped_site = phop['mapped_site'].split('|')[0]
                 if mapped_site not in self.repr_hop:
-                    if great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km < 600:
+                    if great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km < 600 and self.check_ip_ping(phop.name) and not self.bogonip(phop.name):
                         self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km]
                 else:
-                    if great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km < self.repr_phop[mapped_site][1]:
+                    if great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km < self.repr_phop[mapped_site][1] and self.check_ip_ping(phop.name) and not self.bogonip(phop.name):
                         self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon),(site_lat,site_lon)).km]
         print(f"In total, we can find {len(self.repr_phop)} sites' unicast representitives.")
 
     def geoanalysis(self):          # we want to know how many probes are routed to the closest site geographically
         def siteRank(data):
-            dis = great_circle((data["mapped_site"].split("|")[1].split(",")[0], data["mapped_site"].split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km
-            rank = 0
-            for site in self.mapping_dc_lst:
-                if dis < great_circle((site.split("|")[1].split(",")[0], site.split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km:
-                    rank += 1
-            return rank
+            try:
+                dis = great_circle((data["mapped_site"].split("|")[1].split(",")[0], data["mapped_site"].split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km
+                rank = 0
+                for site in self.mapping_dc_lst:
+                    if dis > great_circle((site.split("|")[1].split(",")[0], site.split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km:
+                        rank += 1
+                return rank
+            except:
+                return None
+        
+        
+        self.measure.measure_pd = self.measure.measure_pd.merge(self.phop_pd[["mapped_site"]],left_on="p_hop",right_index=True)
+        self.measure.measure_pd = self.measure.measure_pd.merge(self.measure.valid_probe_pd[['id','location']],left_on="prb_id",right_on="id")
+        self.measure.measure_pd['lat'] = self.measure.measure_pd['location'].str[1]
+        self.measure.measure_pd['lon'] = self.measure.measure_pd['location'].str[0]
+        self.measure.measure_pd['site_rank'] = self.measure.measure_pd.apply(lambda x: siteRank(x), axis=1)
+        print(f"{len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])/len(self.measure.measure_pd)*100}%({len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])}/{len(self.measure.measure_pd)}) probes are routed to the closest site")
+        # print(self.measure.measure_pd['site_rank'].value_counts().head(5))
+        # print("...")
+        # print(self.measure.measure_pd['site_rank'].value_counts.tail(5))
+
         
         "merge"
             #dist = [great_circle((x.split("|")[1].split(",")[0], x.split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km for x in self.mapping_dc_lst]
 
 
-   # def rttanalysis(self):          # we want to know how many probes are routed to the lowest-latency site
+    def rttanalysis(self):          # we want to know how many probes are routed to the lowest-latency site
+        def topthree(data):         # select three closest sites
+            dis_dict = {}
+            for site in self.mapping_dc_lst:
+                dis_dict[site] = great_circle((site.split("|")[1].split(",")[0], site.split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km
+            dis_dict = sorted(dis_dict.items(),key=lambda x:x[1])
+            return [x[0].split("|")[0] for x in dis_dict[0:3]]
+        
+        def sortRTT(data):
+            if data['mapped_site'].split("|")[0] in data['clsthree']:
+                real_rtt = data[self.repr_phop[data['mapped_site'].split("|")[0]]]
+                rank = 0
+                for site in data['clsthree']:
+                    if data[self.repr_phop[site]] != None:
+                        if data[self.repr_phop[site]] < real_rtt:
+                            rank += 1
+                return rank
+            else:                    # mapped sites is not in the closest three sites
+                rank = 0
+                for site in data['clsthree']:
+                    if data[self.repr_phop[site]] != None:
+                        if data[self.repr_phop[site]] < data['rtt']:
+                            rank += 1
+                return rank                
+            
+        
+        self.measure.measure_pd["clsthree"] = self.measure.measure_pd.apply(lambda x: topthree(x), axis=1)
+        measure_dict = {}
+        for _, item in self.measure.measure_pd.iterrows():
+            for site in item["clsthree"]:
+                if site in self.repr_phop.keys():
+                    if self.repr_phop[site][0] not in measure_dict.keys():
+                        measure_dict[self.repr_phop[site][0]] = [item['prb_id']]
+                    else:
+                        measure_dict[self.repr_phop[site][0]].append(item['prb_id'])
+        measure_ins_lst = []
+        measure_pd_lst = []
+        
+        for target, prb_lst in measure_dict.items():
+            a = measurement.Measurement(target=[target], key_lst=self.key_lst, prb_lst=prb_lst)
+            measure_ins_lst.append(a)
+            a.measurement(a.ping)
+            a.ping_result()
+            a.measure_pd.rename(columns={"avg":target}, inplace=True)
+            if "prb_id" in a.measure_pd.columns:                  # whether the measure_pd is null
+                a.measure_pd.set_index("prb_id")
+                measure_pd_lst.append(a.measure_pd[[target]])
+
+        self.rtt_pd = pd.concat(measure_pd_lst, axis=1, join="outer")
+        self.rtt_pd = self.rtt_pd.merge(self.measure.measure_pd[['prb_id','mapped_site','clsthree','rtt']], left_index=True, right_on="prb_id")
+        self.rtt_pd['rtt_rank'] = self.rtt_pd.apply(lambda x: sortRTT(x), axis=1)
+
+        print(f"{len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])/len(self.rtt_pd)*100}%({len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])}/{len(self.rtt_pd)}) probes are routed to the lowest-latency site")
