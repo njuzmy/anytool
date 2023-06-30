@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import datetime
 import numpy as np
+import ast
 from ripe.atlas.cousteau import (
   Ping,
   Traceroute,
@@ -117,6 +118,7 @@ class Measurement:
             files = os.listdir("../dataset/srprobe_lst/")
             filename = sorted(files, reverse=True)[0]                      # get the latest rsprobe_lst, get valid_probe_pd
             self.valid_probe_pd = pd.read_csv(f"../dataset/srprobe_lst/{filename}", index_col=0)
+            self.valid_probe_pd['location'] = self.valid_probe_pd['location'].apply(lambda x: ast.literal_eval(x))
         else:
             self.get_probe()
             print("get probes done, running measurement")
@@ -144,7 +146,10 @@ class Measurement:
         return self.mtr_mid
     
     def getmtrid(self, mtr_lst=[]):        #assign the measurement_id instead of running a new round measurement
-        self.get_probe()
+        files = os.listdir("../dataset/srprobe_lst/")
+        filename = sorted(files, reverse=True)[0]                      # get the latest rsprobe_lst, get valid_probe_pd
+        self.valid_probe_pd = pd.read_csv(f"../dataset/srprobe_lst/{filename}", index_col=0)
+        self.valid_probe_pd['location'] = self.valid_probe_pd['location'].apply(lambda x: ast.literal_eval(x))
         self.mtr_mid = mtr_lst
 
     def tr_result(self):
