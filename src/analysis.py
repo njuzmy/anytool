@@ -53,7 +53,6 @@ class analysis:
     def geolocate(self):  # geolocate the pen-hop
         def hoiho(rdns):
             result = requests.get(f"https://api.hoiho.caida.org/lookups/{rdns}")  # extract geolocation from hostname
-            print(result.text)
             try:
                 result = eval(result.text)
                 if "matches" in result.keys():
@@ -67,7 +66,6 @@ class analysis:
         def extracerDNS(ip):
             try:
                 rdns = socket.gethostbyaddr(ip)[0]
-                print(rdns)
                 return hoiho(rdns)
             except BaseException:
                 return None
@@ -127,7 +125,7 @@ class analysis:
             except BaseException:
                 return None
 
-        def para(fn, col):
+        def parallel(fn, col):
             print(col)
             lock = threading.Lock()
 
@@ -162,26 +160,29 @@ class analysis:
                         raise Exception(f"something error when {col}")
                     break
             print()
-            for k,v in ans_dict.items():
-                self.phop_pd.loc[k,col]=v
-            # self.phop_pd[col]=pd.DataFrame.from_dict(ans_dict)
+
+            self.phop_pd[col]=pd.Series()
+            self.phop_pd[col]=self.phop_pd[col].astype(object)
+            for k, v in ans_dict.items():
+                self.phop_pd.loc[k, col] = v
 
         try:
             print("geolocating the phop...")
             self.phop_pd = pd.DataFrame(self.measure.measure_pd['p_hop'].value_counts())
             self.phop_pd = self.phop_pd[self.phop_pd.index != '*']
-            para(extracerDNS, "rdns-geo")
-            para(ipinfo, "ipinfo-geo")
-            # para(maxmind, "maxmind-geo")
-            # para(nearestPrb, "nearest_prb_loc")
+            parallel(extracerDNS, "rdns-geo")
+            parallel(ipinfo, "ipinfo-geo")
 
             # self.phop_pd['rdns-geo'] = self.phop_pd.apply(lambda x: extracerDNS(x.name), axis=1)
             # self.phop_pd['ipinfo-geo'] = self.phop_pd.apply(lambda x: ipinfo(x.name), axis=1)
+            print('maxmind-geo')
             self.phop_pd['maxmind-geo'] = self.phop_pd.apply(lambda x: maxmind(x.name), axis=1)
+            print('nearest_prb_loc')
             self.phop_pd['nearest_prb_loc'] = self.phop_pd.apply(lambda x: nearestPrb(x.name), axis=1)
+            print('location')
             self.phop_pd['location'] = self.phop_pd.apply(lambda x: extractDist(x), axis=1)
-            print(self.phop_pd)
             self.phop_pd = self.phop_pd[~pd.isna(self.phop_pd["location"])]
+            print(self.phop_pd)
         except Exception as e:
             print(e)
             print("something error when geolocating phop_pd")
