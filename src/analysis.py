@@ -229,18 +229,65 @@ class analysis:
                     return True
             return False
 
+
+
+
         self.repr_phop = {}
-        for _, phop in self.phop_pd.iterrows():
+        i = 0 
+        lock = threading.Lock()
+
+        def my_fn(phop):
             if phop['location'] is not None:
                 phop_lat, phop_lon = phop['location'].split('|')[-1].split(',')
                 site_lat, site_lon = phop['mapped_site'].split('|')[-1].split(',')
                 mapped_site = phop['mapped_site'].split('|')[0]
-                if mapped_site not in self.repr_phop:
+
+                with lock:
+                    keys=self.repr_phop
+
+                if mapped_site not in keys:
                     if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < 600 and check_ip_ping(phop.name) and not bogonip(phop.name):
-                        self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
+                        ans = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
+                        with lock:
+                            self.repr_phop[mapped_site]=ans
+
                 else:
                     if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < self.repr_phop[mapped_site][1] and check_ip_ping(phop.name) and not bogonip(phop.name):
-                        self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
+                        ans = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
+                        with lock:
+                            self.repr_phop[mapped_site]=ans
+        threads = []
+
+        for index, row in self.phop_pd.iterrows():
+            thread = threading.Thread(target=my_fn, args=(row,))
+            threads.append(thread)
+            thread.start()
+
+        while True:
+            time.sleep(0.2)
+            exit_counter = 0
+            for thread in threads:
+                if not thread.is_alive(): 
+                    exit_counter += 1
+            print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
+            
+            if exit_counter == self.phop_pd.shape[0]:
+                break
+        print()
+
+        # for _, phop in self.phop_pd.iterrows():
+        #     print(i)
+        #     i+=1
+        #     if phop['location'] is not None:
+        #         phop_lat, phop_lon = phop['location'].split('|')[-1].split(',')
+        #         site_lat, site_lon = phop['mapped_site'].split('|')[-1].split(',')
+        #         mapped_site = phop['mapped_site'].split('|')[0]
+        #         if mapped_site not in self.repr_phop:
+        #             if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < 600 and check_ip_ping(phop.name) and not bogonip(phop.name):
+        #                 self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
+        #         else:
+        #             if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < self.repr_phop[mapped_site][1] and check_ip_ping(phop.name) and not bogonip(phop.name):
+        #                 self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
         print(f"In total, we can find {len(self.repr_phop)} sites' unicast representitives.")
 
     def geoanalysis(self):          # we want to know how many probes are routed to the closest site geographically
