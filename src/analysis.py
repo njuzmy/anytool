@@ -71,7 +71,11 @@ class analysis:
                 return None
 
         def ipinfo(ip):
-            loc = requests.get("https://ipinfo.io/%s/json?token=2c732d429c11a8" % ip).json()
+            # TODO
+            try:
+                loc = requests.get("https://ipinfo.io/%s/json?token=2c732d429c11a8" % ip).json()
+            except:
+                loc = ""                 
             if "country" in loc:
                 return f"{loc['country']}|{loc['city']}|{loc['loc']}"
             else:
