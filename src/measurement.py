@@ -248,6 +248,8 @@ class Measurement:
 
     def ping_result(self):
         measure_pd_lst = []
+        # print(len(self.mtr_mid))
         for i in range(len(self.mtr_mid)):
+            print(i)
             measure_pd_lst.append(pd.read_json("https://atlas.ripe.net/api/v2/measurements/%s/results/?format=json&filename=RIPE-Atlas-measurement-%s.json" % (self.mtr_mid[i], self.mtr_mid[i])))
         self.measure_pd = pd.concat(measure_pd_lst).reset_index()
