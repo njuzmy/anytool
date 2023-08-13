@@ -354,6 +354,44 @@ class analysis:
         measure_pd_lst = []
         self.measure.measure_pd["clsthree"] = self.measure.measure_pd.apply(lambda x: topthree(x), axis=1)
 
+        def parallel(msm_id_lst):
+            lock = threading.Lock()
+
+            done_counter_=[]
+            def multi_thread(id_lst):
+                a = measurement.Measurement()
+                a.getmtrid(id_lst)
+                a.ping_result()
+                target = a.measure_pd['dst_addr'].value_counts().index[0]
+                a.measure_pd.rename(columns={"avg": target}, inplace=True)
+                if "prb_id" in a.measure_pd.columns:                  # whether the measure_pd is null
+                    a.measure_pd.set_index("prb_id", inplace=True)
+                    with lock:
+                        measure_pd_lst.append(a.measure_pd[[target]])
+                        done_counter_.append(1)
+
+            threads = []
+
+            for id_lst in msm_id_lst:
+                thread = threading.Thread(target=multi_thread, args=(id_lst,))
+                threads.append(thread)
+                thread.start()
+
+            while True:
+                time.sleep(0.2)
+                exit_counter = 0
+                done_counter=len(done_counter_)
+                for thread in threads:
+                    if not thread.is_alive(): 
+                        exit_counter += 1
+                print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
+                
+                if exit_counter == len(msm_id_lst):
+                    if done_counter != exit_counter:
+                        raise Exception(f"something error")
+                    break
+            print()
+
         if msm_file == "":
             measure_dict = {}
             for _, item in self.measure.measure_pd.iterrows():
@@ -377,15 +415,8 @@ class analysis:
             with open(msm_file, 'r') as f:
                 lines = f.read()
             msm_id_lst = ast.literal_eval(lines)
-            for id_lst in msm_id_lst:
-                a = measurement.Measurement()
-                a.getmtrid(id_lst)
-                a.ping_result()
-                target = a.measure_pd['dst_addr'].value_counts().index[0]
-                a.measure_pd.rename(columns={"avg": target}, inplace=True)
-                if "prb_id" in a.measure_pd.columns:                  # whether the measure_pd is null
-                    a.measure_pd.set_index("prb_id", inplace=True)
-                    measure_pd_lst.append(a.measure_pd[[target]])
+            parallel(msm_id_lst)
+
 
         self.rtt_pd = pd.concat(measure_pd_lst, axis=1, join="outer")
         self.rtt_pd = self.rtt_pd.merge(self.measure.measure_pd[['prb_id', 'mapped_site', 'clsthree', 'rtt']], left_index=True, right_on="prb_id")

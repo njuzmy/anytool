@@ -7,6 +7,8 @@ import json
 import cmd
 import argparse
 import analysis
+import pickle
+
 
 class MainCmd(cmd.Cmd):
     intro = """
@@ -26,10 +28,13 @@ class MainCmd(cmd.Cmd):
     def __init__(self, config_file='cmu_groups.json'):
         cmd.Cmd.__init__(self)
         self.test_analysis = None
+        self.aliases = {'a': self.do_analysis,
+                        'm': self.do_mapgeo,
+                        'r': self.do_reprePhop,
+                        'g': self.do_geoanalysis,
+                        'rt': self.do_rttanalysis}
 
-    # TODO
-    # def do_analysis(self, arg):
-    def do_a(self, arg):
+    def do_analysis(self, arg):
         try:
             self.test_analysis = analysis.analysis(
                 dc_name="imperva",
@@ -51,53 +56,55 @@ class MainCmd(cmd.Cmd):
                     44104405,
                     44104406,
                     44104407])
-            
+
             print("measure_pd")
             print(self.test_analysis.measure.measure_pd)
         except Exception as e:
             print(e)
 
-    # TODO
-    # def do_mapgeo(self,arg):
-    def do_m(self,arg):
+    def do_mapgeo(self, arg):
         try:
             if self.test_analysis is None:
                 print("'analysis' first")
-                return 
+                return
             self.test_analysis.mapsite()
         except Exception as e:
             print(e)
-    
-    # TODO
-    # def do_reprePhop(self,arg):
-    def do_r(self,arg):
+
+    def do_reprePhop(self, arg):
         try:
             if self.test_analysis is None:
                 print("'analysis' first")
-                return 
+                return
             self.test_analysis.reprePhop()
         except Exception as e:
             print(e)
 
-    # TODO
-    # def do_geoanalysis(self,arg):
-    def do_g(self,arg):
+    def do_geoanalysis(self, arg):
         try:
             if self.test_analysis is None:
                 print("'analysis' first")
-                return 
+                return
             self.test_analysis.geoanalysis()
-        except Exception as e:
-            print(e)
-    
-    # TODO
-    # def do_rttanalysis(self.arg):
-    def do_rt(self,arg):
-        try:
-            self.test_analysis.rttanalysis(arg)
+            with open("temp.pkl", "wb") as f:
+                pickle.dump(self.test_analysis, f)
         except Exception as e:
             print(e)
 
+    def do_rttanalysis(self, arg):
+        try:
+            try:
+                with open("temp.pkl", "rb") as f:
+                    self.test_analysis = pickle.load(f)
+            except BaseException:
+                pass
+            if self.test_analysis is None:
+                print("'analysis' first")
+                return
+            arg = "../test/imperva/ping_mid.txt"
+            self.test_analysis.rttanalysis(arg)
+        except Exception as e:
+            print(e)
 
     def emptyline(self):
         pass
@@ -112,6 +119,13 @@ class MainCmd(cmd.Cmd):
         output = os.popen(line).read()
         print(output)
         self.last_output = output
+
+    def default(self, line):
+        cmd, arg, line = self.parseline(line)
+        if cmd in self.aliases:
+            self.aliases[cmd](arg)
+        else:
+            print("*** Unknown syntax: %s" % line)
 
 
 if __name__ == "__main__":
