@@ -7,6 +7,7 @@ import requests
 import measurement
 import subprocess
 import ast
+import sys
 from IPy import IP
 from geopy.distance import great_circle
 from geopy.geocoders import Nominatim
@@ -157,7 +158,10 @@ class analysis:
                 for thread in threads:
                     if not thread.is_alive(): 
                         exit_counter += 1
-                print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
+                print("\r", end="")
+                print("Progress: {:.1f}%: ".format(done_counter/self.phop_pd.shape[0]*100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
+                sys.stdout.flush()
+                #print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
                 
                 if exit_counter == self.phop_pd.shape[0]:
                     if done_counter != exit_counter:
@@ -273,7 +277,10 @@ class analysis:
             for thread in threads:
                 if not thread.is_alive(): 
                     exit_counter += 1
-            print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
+            print("\r", end="")
+            print("Get the results: {:.1f}%: ".format(exit_counter/self.phop_pd.shape[0]*100), "▋" * (exit_counter * 50 // self.phop_pd.shape[0]), end="")
+            sys.stdout.flush()
+            #print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
             
             if exit_counter == self.phop_pd.shape[0]:
                 break
@@ -384,7 +391,10 @@ class analysis:
                 for thread in threads:
                     if not thread.is_alive(): 
                         exit_counter += 1
-                print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
+                print("\r", end="")
+                print("Get the results: {:.1f}%: ".format(done_counter/len(msm_id_lst)*100), "▋" * (done_counter * 50 // len(msm_id_lst)), end="")
+                sys.stdout.flush()
+                #print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
                 
                 if exit_counter == len(msm_id_lst):
                     if done_counter != exit_counter:

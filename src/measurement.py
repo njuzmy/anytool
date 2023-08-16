@@ -228,7 +228,10 @@ class Measurement:
             for thread in threads:
                 if not thread.is_alive(): 
                     exit_counter += 1
-            print(f"\r{done_counter}/{len(self.mtr_mid)}", end="")
+            print("\r", end="")
+            print("Get the results: {:.1f}%: ".format(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)), end="")
+            sys.stdout.flush()
+            #print(f"\r{done_counter}/{len(self.mtr_mid)}", end="")
 
             if exit_counter == len(self.mtr_mid):
                 if done_counter != exit_counter:
