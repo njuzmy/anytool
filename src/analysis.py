@@ -75,8 +75,8 @@ class analysis:
             # TODO
             try:
                 loc = requests.get("https://ipinfo.io/%s/json?token=2c732d429c11a8" % ip).json()
-            except:
-                loc = ""                 
+            except BaseException:
+                loc = ""
             if "country" in loc:
                 return f"{loc['country']}|{loc['city']}|{loc['loc']}"
             else:
@@ -130,47 +130,45 @@ class analysis:
             except BaseException:
                 return None
 
-        def parallel(fn, col):
+        def parallel(fn, col, info_source):
             print(col)
             lock = threading.Lock()
 
             ans_dict = {}
 
-            def multi_thread(fn, index):
-                # print(index)
-                ans = fn(index)
-                # print(index,"end")
+            def multi_thread(fn, index, row):
+                data = [index, row][info_source]
+                ans = fn(data)
                 with lock:
                     ans_dict[index] = ans
 
             threads = []
 
             for index, row in self.phop_pd.iterrows():
-                thread = threading.Thread(target=multi_thread, args=(fn, index,))
+                thread = threading.Thread(target=multi_thread, args=(fn, index, row,))
                 threads.append(thread)
                 thread.start()
-                # print(index)
-                # self.phop_pd.loc[index, col] = fn(index)
+
             while True:
                 time.sleep(0.2)
                 done_counter = len(ans_dict)
                 exit_counter = 0
                 for thread in threads:
-                    if not thread.is_alive(): 
+                    if not thread.is_alive():
                         exit_counter += 1
                 print("\r", end="")
-                print("Progress: {:.1f}%: ".format(done_counter/self.phop_pd.shape[0]*100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
+                print("Progress: {:.1f}%: ".format(done_counter / self.phop_pd.shape[0] * 100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
                 sys.stdout.flush()
-                #print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
-                
+                # print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
+
                 if exit_counter == self.phop_pd.shape[0]:
                     if done_counter != exit_counter:
                         raise Exception(f"something error when {col}")
                     break
             print()
 
-            self.phop_pd[col]=pd.Series()
-            self.phop_pd[col]=self.phop_pd[col].astype(object)
+            self.phop_pd[col] = pd.Series()
+            self.phop_pd[col] = self.phop_pd[col].astype(object)
             for k, v in ans_dict.items():
                 self.phop_pd.loc[k, col] = v
 
@@ -178,17 +176,21 @@ class analysis:
             print("geolocating the phop...")
             self.phop_pd = pd.DataFrame(self.measure.measure_pd['p_hop'].value_counts())
             self.phop_pd = self.phop_pd[self.phop_pd.index != '*']
-            parallel(extracerDNS, "rdns-geo")
-            parallel(ipinfo, "ipinfo-geo")
 
+            parallel(extracerDNS, "rdns-geo", 0)
+            parallel(ipinfo, "ipinfo-geo", 0)
             # self.phop_pd['rdns-geo'] = self.phop_pd.apply(lambda x: extracerDNS(x.name), axis=1)
             # self.phop_pd['ipinfo-geo'] = self.phop_pd.apply(lambda x: ipinfo(x.name), axis=1)
+
             print('maxmind-geo')
             self.phop_pd['maxmind-geo'] = self.phop_pd.apply(lambda x: maxmind(x.name), axis=1)
             print('nearest_prb_loc')
             self.phop_pd['nearest_prb_loc'] = self.phop_pd.apply(lambda x: nearestPrb(x.name), axis=1)
-            print('location')
-            self.phop_pd['location'] = self.phop_pd.apply(lambda x: extractDist(x), axis=1)
+
+            # print('location')
+            # self.phop_pd['location'] = self.phop_pd.apply(lambda x: extractDist(x), axis=1)
+            parallel(extractDist, "location", 1)
+
             self.phop_pd = self.phop_pd[~pd.isna(self.phop_pd["location"])]
             print(self.phop_pd)
         except Exception as e:
@@ -237,11 +239,8 @@ class analysis:
                     return True
             return False
 
-
-
-
         self.repr_phop = {}
-        i = 0 
+        i = 0
         lock = threading.Lock()
 
         def my_fn(phop):
@@ -251,19 +250,19 @@ class analysis:
                 mapped_site = phop['mapped_site'].split('|')[0]
 
                 with lock:
-                    keys=self.repr_phop
+                    keys = self.repr_phop
 
                 if mapped_site not in keys:
                     if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < 600 and check_ip_ping(phop.name) and not bogonip(phop.name):
                         ans = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
                         with lock:
-                            self.repr_phop[mapped_site]=ans
+                            self.repr_phop[mapped_site] = ans
 
                 else:
                     if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < self.repr_phop[mapped_site][1] and check_ip_ping(phop.name) and not bogonip(phop.name):
                         ans = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
                         with lock:
-                            self.repr_phop[mapped_site]=ans
+                            self.repr_phop[mapped_site] = ans
         threads = []
 
         for index, row in self.phop_pd.iterrows():
@@ -275,13 +274,13 @@ class analysis:
             time.sleep(0.2)
             exit_counter = 0
             for thread in threads:
-                if not thread.is_alive(): 
+                if not thread.is_alive():
                     exit_counter += 1
             print("\r", end="")
-            print("Get the results: {:.1f}%: ".format(exit_counter/self.phop_pd.shape[0]*100), "▋" * (exit_counter * 50 // self.phop_pd.shape[0]), end="")
+            print("Get the results: {:.1f}%: ".format(exit_counter / self.phop_pd.shape[0] * 100), "▋" * (exit_counter * 50 // self.phop_pd.shape[0]), end="")
             sys.stdout.flush()
-            #print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
-            
+            # print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
+
             if exit_counter == self.phop_pd.shape[0]:
                 break
         print()
@@ -364,7 +363,8 @@ class analysis:
         def parallel(msm_id_lst):
             lock = threading.Lock()
 
-            done_counter_=[]
+            done_counter_ = []
+
             def multi_thread(id_lst):
                 a = measurement.Measurement()
                 a.getmtrid(id_lst)
@@ -387,15 +387,15 @@ class analysis:
             while True:
                 time.sleep(0.2)
                 exit_counter = 0
-                done_counter=len(done_counter_)
+                done_counter = len(done_counter_)
                 for thread in threads:
-                    if not thread.is_alive(): 
+                    if not thread.is_alive():
                         exit_counter += 1
                 print("\r", end="")
-                print("Get the results: {:.1f}%: ".format(done_counter/len(msm_id_lst)*100), "▋" * (done_counter * 50 // len(msm_id_lst)), end="")
+                print("Get the results: {:.1f}%: ".format(done_counter / len(msm_id_lst) * 100), "▋" * (done_counter * 50 // len(msm_id_lst)), end="")
                 sys.stdout.flush()
-                #print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
-                
+                # print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
+
                 if exit_counter == len(msm_id_lst):
                     if done_counter != exit_counter:
                         raise Exception(f"something error")
@@ -426,7 +426,6 @@ class analysis:
                 lines = f.read()
             msm_id_lst = ast.literal_eval(lines)
             parallel(msm_id_lst)
-
 
         self.rtt_pd = pd.concat(measure_pd_lst, axis=1, join="outer")
         self.rtt_pd = self.rtt_pd.merge(self.measure.measure_pd[['prb_id', 'mapped_site', 'clsthree', 'rtt']], left_index=True, right_on="prb_id")
