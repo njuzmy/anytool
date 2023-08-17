@@ -158,7 +158,7 @@ class analysis:
                     if not thread.is_alive():
                         exit_counter += 1
                 print("\r", end="")
-                print(col, "progress: {:.1f}%: ".format(done_counter / self.phop_pd.shape[0] * 100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
+                print("%-15s"%col, "progress: %5.1f%%: "%(done_counter / self.phop_pd.shape[0] * 100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
                 sys.stdout.flush()
                 # print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
 

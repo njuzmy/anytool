@@ -229,7 +229,9 @@ class Measurement:
                 if not thread.is_alive(): 
                     exit_counter += 1
             print("\r", end="")
-            print("Get the results: {:.1f}%: ".format(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)), end="")
+            print("%-15s"%("Get the results"),"progress: %5.1f%%: "%(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)), end="")
+
+
             sys.stdout.flush()
             #print(f"\r{done_counter}/{len(self.mtr_mid)}", end="")
 
@@ -239,6 +241,7 @@ class Measurement:
                 break
         print()
         # 结束
+
 
         # # for i in range(len(self.mtr_mid)):
         #     measure_pd_lst.append(pd.read_json("https://atlas.ripe.net/api/v2/measurements/%s/results/?format=json&filename=RIPE-Atlas-measurement-%s.json" % (self.mtr_mid[i], self.mtr_mid[i])))
