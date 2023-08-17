@@ -8,6 +8,7 @@ import cmd
 import argparse
 import analysis
 import pickle
+import pandas as pd
 
 
 class MainCmd(cmd.Cmd):
@@ -25,16 +26,18 @@ class MainCmd(cmd.Cmd):
 
     prompt = 'Anytool> '
 
-    def __init__(self, config_file='cmu_groups.json'):
+    def __init__(self):
         cmd.Cmd.__init__(self)
         self.test_analysis = None
-        self.aliases = {'a': self.do_analysis,
-                        'm': self.do_mapgeo,
-                        'r': self.do_reprePhop,
-                        'g': self.do_geoanalysis,
-                        'rt': self.do_rttanalysis}
+        self.aliases = {'a': self.do_get_result,
+                        'show': self.do_show_result,
+                        'save': self.do_save_result,
+                        'm': self.do_map_site,
+                        'r': self.do_select_unirepre,
+                        'g': self.do_geo_analyze,
+                        'rt': self.do_rtt_analyze}
 
-    def do_analysis(self, arg):
+    def do_get_result(self, arg):
         try:
             self.test_analysis = analysis.analysis(
                 dc_name="imperva",
@@ -57,21 +60,45 @@ class MainCmd(cmd.Cmd):
                     44104406,
                     44104407])
 
-            print("measure_pd")
+            #print("measure_pd")
+            #print(self.test_analysis.measure.measure_pd)
+        except Exception as e:
+            print(e)
+
+    def do_show_result(self, arg):
+        try:
+            if self.test_analysis is None:
+                print("Please get the results first")
+                return
             print(self.test_analysis.measure.measure_pd)
         except Exception as e:
             print(e)
 
-    def do_mapgeo(self, arg):
+    def do_save_result(self, arg):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-l", "--location", dest="location", type=str, default="../dataset/a.csv", help="where to save the result")
+        try:
+            args = parser.parse_args(arg.split())
+            if args is None:
+                print("Please specify the save location")
+            if self.test_analysis is None:
+                print("Please get the results first")
+                return
+            self.test_analysis.measure.measure_pd.to_csv(args.location)
+            #self.test_analysis.measure.measure_pd
+        except Exception as e:
+            print(e)
+
+    def do_map_site(self, arg):
         try:
             if self.test_analysis is None:
-                print("'analysis' first")
+                print("Please get the results first")
                 return
             self.test_analysis.mapsite()
         except Exception as e:
             print(e)
 
-    def do_reprePhop(self, arg):
+    def do_select_unirepre(self, arg):
         try:
             if self.test_analysis is None:
                 print("'analysis' first")
@@ -80,7 +107,7 @@ class MainCmd(cmd.Cmd):
         except Exception as e:
             print(e)
 
-    def do_geoanalysis(self, arg):
+    def do_geo_analyze(self, arg):
         try:
             if self.test_analysis is None:
                 print("'analysis' first")
@@ -91,7 +118,7 @@ class MainCmd(cmd.Cmd):
         except Exception as e:
             print(e)
 
-    def do_rttanalysis(self, arg):
+    def do_rtt_analyze(self, arg):
         try:
             try:
                 with open("temp.pkl", "rb") as f:

@@ -8,6 +8,7 @@ import measurement
 import subprocess
 import ast
 import sys
+from tqdm import tqdm
 from IPy import IP
 from geopy.distance import great_circle
 from geopy.geocoders import Nominatim
@@ -131,7 +132,7 @@ class analysis:
                 return None
 
         def parallel(fn, col, info_source):
-            print(col)
+            #print(col)
             lock = threading.Lock()
 
             ans_dict = {}
@@ -157,7 +158,7 @@ class analysis:
                     if not thread.is_alive():
                         exit_counter += 1
                 print("\r", end="")
-                print("Progress: {:.1f}%: ".format(done_counter / self.phop_pd.shape[0] * 100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
+                print(col, "progress: {:.1f}%: ".format(done_counter / self.phop_pd.shape[0] * 100), "▋" * (done_counter * 50 // self.phop_pd.shape[0]), end="")
                 sys.stdout.flush()
                 # print(f"\r{done_counter}/{self.phop_pd.shape[0]}", end="")
 
@@ -429,7 +430,8 @@ class analysis:
 
         self.rtt_pd = pd.concat(measure_pd_lst, axis=1, join="outer")
         self.rtt_pd = self.rtt_pd.merge(self.measure.measure_pd[['prb_id', 'mapped_site', 'clsthree', 'rtt']], left_index=True, right_on="prb_id")
-        self.rtt_pd['rtt_rank'] = self.rtt_pd.apply(lambda x: sortRTT(x), axis=1)
+        tqdm.pandas(desc="analyzing")
+        self.rtt_pd['rtt_rank'] = self.rtt_pd.progress_apply(lambda x: sortRTT(x), axis=1)
 
         print(
             f"Of {len(self.measure.measure_pd)} probes, we sucessfully analyze {len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])} probes' rtt performance. As a result, {round(len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])/len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])*100,1)}% ({len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])}/{len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])}) probes are routed to the lowest-latency site")
