@@ -169,9 +169,9 @@ class analysis:
             print()
 
             self.phop_pd[col] = pd.Series()
-            self.phop_pd[col] = self.phop_pd[col].astype(object)
+            # self.phop_pd[col] = self.phop_pd[col].astype(object)
             for k, v in ans_dict.items():
-                self.phop_pd.loc[k, col] = v
+                self.phop_pd.at[k, col] = v
 
         try:
             print("geolocating the phop...")
@@ -180,17 +180,15 @@ class analysis:
 
             parallel(extracerDNS, "rdns-geo", 0)
             parallel(ipinfo, "ipinfo-geo", 0)
+            parallel(maxmind, "maxmind-geo", 0)
+            parallel(nearestPrb, "nearest_prb_loc", 0)
+            parallel(extractDist, "location", 1)
+
             # self.phop_pd['rdns-geo'] = self.phop_pd.apply(lambda x: extracerDNS(x.name), axis=1)
             # self.phop_pd['ipinfo-geo'] = self.phop_pd.apply(lambda x: ipinfo(x.name), axis=1)
-
-            print('maxmind-geo')
-            self.phop_pd['maxmind-geo'] = self.phop_pd.apply(lambda x: maxmind(x.name), axis=1)
-            print('nearest_prb_loc')
-            self.phop_pd['nearest_prb_loc'] = self.phop_pd.apply(lambda x: nearestPrb(x.name), axis=1)
-
-            # print('location')
+            # self.phop_pd['maxmind-geo'] = self.phop_pd.apply(lambda x: maxmind(x.name), axis=1)
+            # self.phop_pd['nearest_prb_loc'] = self.phop_pd.apply(lambda x: nearestPrb(x.name), axis=1)
             # self.phop_pd['location'] = self.phop_pd.apply(lambda x: extractDist(x), axis=1)
-            parallel(extractDist, "location", 1)
 
             self.phop_pd = self.phop_pd[~pd.isna(self.phop_pd["location"])]
             print(self.phop_pd)
