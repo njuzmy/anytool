@@ -168,10 +168,12 @@ class analysis:
                     break
             print()
 
-            self.phop_pd[col] = pd.Series()
-            # self.phop_pd[col] = self.phop_pd[col].astype(object)
-            for k, v in ans_dict.items():
-                self.phop_pd.at[k, col] = v
+            # self.phop_pd[col] = pd.Series()
+            # print(ans_dict)
+            # # self.phop_pd[col] = self.phop_pd[col].astype(object)
+            # for k, v in ans_dict.items():
+            #     self.phop_pd.at[k, col] = v
+            self.phop_pd = self.phop_pd.merge(pd.DataFrame([ans_dict]).T.rename(columns={0:col}),left_index=True,right_index=True)
 
         try:
             print("geolocating the phop...")
@@ -191,7 +193,7 @@ class analysis:
             # self.phop_pd['location'] = self.phop_pd.apply(lambda x: extractDist(x), axis=1)
 
             self.phop_pd = self.phop_pd[~pd.isna(self.phop_pd["location"])]
-            print(self.phop_pd)
+            #print(self.phop_pd)
         except Exception as e:
             print(e)
             print("something error when geolocating phop_pd")

@@ -10,6 +10,8 @@ import analysis
 import pickle
 import pandas as pd
 
+built_in = ["imperva-ns[G]", "imperva[R]", "edgio-ns[G]", "edgio-3[R]", "edgio-4[R]", "cloudflare[G]", "akamai[G]"]
+
 
 class MainCmd(cmd.Cmd):
     intro = """
@@ -31,6 +33,7 @@ class MainCmd(cmd.Cmd):
         self.test_analysis = None
         self.aliases = {'a': self.do_get_result,
                         'b': self.do_built_in,
+                        'c': self.do_choose,
                         'show': self.do_show_result,
                         'save': self.do_save_result,
                         'm': self.do_map_site,
@@ -44,49 +47,44 @@ class MainCmd(cmd.Cmd):
         parser.add_argument("-n", "--name", dest="name", type=str, required=False, default="", help="which cdn, e.g. imperva")
         parser.add_argument("-t", "--target", dest="target", type=list, required=False, default=[], help="the target ip or hostname")
         parser.add_argument("-f", "--file", dest="file", type=str, required=False, default="", help="cdn site file")
-        parser.add_argument("-m", "--mid", dest="mid", type=list, required=False, default=[], help="measurement ID")
+        parser.add_argument("-m", "--mid", dest="mid", type=list, required=False, 
+        default=[], help="measurement ID")
         try:
             args = parser.parse_args(arg.split())
             if args is None:
                 return
 
             self.test_analysis = analysis.analysis(key_lst=args.key, target=args.target, dc_name=args.name, dc_file=args.file, mtr_lst=args.mid)
-            # self.test_analysis = analysis.analysis(
-            #     dc_name="imperva",
-            #     target=[
-            #         "45.60.155.44",
-            #         "45.60.151.44",
-            #         "45.60.159.44",
-            #         "45.60.167.44",
-            #         "45.60.171.44",
-            #         "45.60.163.44"],
-            #     mtr_lst=[
-            #         44104396,
-            #         44104397,
-            #         44104399,
-            #         44104400,
-            #         44104401,
-            #         44104402,
-            #         44104404,
-            #         44104405,
-            #         44104406,
-            #         44104407])
-
-            #print("measure_pd")
-            #print(self.test_analysis.measure.measure_pd)
 
         except Exception as e:
             print(e)
 
-    def do_built_in(self):
-        built_in = ["imperva-ns[G]", "imperva[R]", "edgio-ns[G]", "edgio-3[R]", "edgio-4[R]", "cloudflare[G]", "akamai[G]"]
+    def do_built_in(self, arg):
         try:
             print("The following anycast deployments are already measured by anytool. You can use 'choose [name]' command to see the results. Note: R means regional anycast and G means global anycast")
+            i = 1
             for item in built_in:
-                print(item)
+                print(f"{i}:{item}")
+                i = i + 1
         except Exception as e:
             print(e)
 
+    def do_choose(self, arg):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-n", "--number", dest="number", type=int, required=True, default=0, help="which built-in measurement, e.g. imperva")
+        try:
+            args = parser.parse_args(arg.split())
+            if args is None:
+                return
+            if args.number > len(built_in):
+                print("invalid numbers")
+                return
+            with open(f"../dataset/built-in/{built_in[args.number-1]}.txt") as f:
+                    content = f.read()
+                    required = eval(content)  # file should include required content
+            self.test_analysis = analysis.analysis(dc_name=required['dc_name'],target=required['target'],mtr_lst=required['mtr_lst'])
+        except Exception as e:
+            print(e)
 
     def do_show_result(self, arg):
         try:
