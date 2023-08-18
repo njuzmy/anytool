@@ -134,8 +134,6 @@ class MainCmd(cmd.Cmd):
                 print("'analysis' first")
                 return
             self.test_analysis.geoanalysis()
-            with open("temp.pkl", "wb") as f:
-                pickle.dump(self.test_analysis, f)
         except Exception as e:
             print(e)
 
