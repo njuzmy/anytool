@@ -30,6 +30,7 @@ class MainCmd(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.test_analysis = None
         self.aliases = {'a': self.do_get_result,
+                        'b': self.do_built_in,
                         'show': self.do_show_result,
                         'save': self.do_save_result,
                         'm': self.do_map_site,
@@ -38,32 +39,54 @@ class MainCmd(cmd.Cmd):
                         'rt': self.do_rtt_analyze}
 
     def do_get_result(self, arg):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-k", "--key", dest="key", type=list, required=False, default=[], help="which cdn, e.g. imperva")
+        parser.add_argument("-n", "--name", dest="name", type=str, required=False, default="", help="which cdn, e.g. imperva")
+        parser.add_argument("-t", "--target", dest="target", type=list, required=False, default=[], help="the target ip or hostname")
+        parser.add_argument("-f", "--file", dest="file", type=str, required=False, default="", help="cdn site file")
+        parser.add_argument("-m", "--mid", dest="mid", type=list, required=False, default=[], help="measurement ID")
         try:
-            self.test_analysis = analysis.analysis(
-                dc_name="imperva",
-                target=[
-                    "45.60.155.44",
-                    "45.60.151.44",
-                    "45.60.159.44",
-                    "45.60.167.44",
-                    "45.60.171.44",
-                    "45.60.163.44"],
-                mtr_lst=[
-                    44104396,
-                    44104397,
-                    44104399,
-                    44104400,
-                    44104401,
-                    44104402,
-                    44104404,
-                    44104405,
-                    44104406,
-                    44104407])
+            args = parser.parse_args(arg.split())
+            if args is None:
+                return
+
+            self.test_analysis = analysis.analysis(key_lst=args.key, target=args.target, dc_name=args.name, dc_file=args.file, mtr_lst=args.mid)
+            # self.test_analysis = analysis.analysis(
+            #     dc_name="imperva",
+            #     target=[
+            #         "45.60.155.44",
+            #         "45.60.151.44",
+            #         "45.60.159.44",
+            #         "45.60.167.44",
+            #         "45.60.171.44",
+            #         "45.60.163.44"],
+            #     mtr_lst=[
+            #         44104396,
+            #         44104397,
+            #         44104399,
+            #         44104400,
+            #         44104401,
+            #         44104402,
+            #         44104404,
+            #         44104405,
+            #         44104406,
+            #         44104407])
 
             #print("measure_pd")
             #print(self.test_analysis.measure.measure_pd)
+
         except Exception as e:
             print(e)
+
+    def do_built_in(self):
+        built_in = ["imperva-ns[G]", "imperva[R]", "edgio-ns[G]", "edgio-3[R]", "edgio-4[R]", "cloudflare[G]", "akamai[G]"]
+        try:
+            print("The following anycast deployments are already measured by anytool. You can use 'choose [name]' command to see the results. Note: R means regional anycast and G means global anycast")
+            for item in built_in:
+                print(item)
+        except Exception as e:
+            print(e)
+
 
     def do_show_result(self, arg):
         try:
@@ -76,11 +99,11 @@ class MainCmd(cmd.Cmd):
 
     def do_save_result(self, arg):
         parser = argparse.ArgumentParser()
-        parser.add_argument("-l", "--location", dest="location", type=str, default="../dataset/a.csv", help="where to save the result")
+        parser.add_argument("-l", "--location", dest="location", type=str, required=True, default="../dataset/a.csv", help="where to save the result")
         try:
             args = parser.parse_args(arg.split())
             if args is None:
-                print("Please specify the save location")
+                return
             if self.test_analysis is None:
                 print("Please get the results first")
                 return

@@ -15,7 +15,7 @@ from geopy.geocoders import Nominatim
 
 
 geolocator = Nominatim(user_agent="xxx")
-known_dc = ["ali", "imperva"]
+known_dc = ["ali", "imperva", "edgio", "cloudflare", "akamai"]
 geo_reader = geoip2.database.Reader("../dataset/geoip2/GeoLite2-City.mmdb")
 
 

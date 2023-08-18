@@ -115,6 +115,8 @@ class Measurement:
             return 'fail'
 
     def measurement(self, fn):
+        if len(self.key_lst) == 0:
+            print("please provide your RIPE Atlas keys")
         if len(self.prb_lst) != 0:
             num = len(self.prb_lst) / 1000
             probe_lst = np.array_split(self.prb_lst, num + 1)
