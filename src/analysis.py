@@ -23,7 +23,8 @@ class analysis:
     def __init__(self, key_lst=[], target=[], dc_name="", dc_file="", mtr_lst=[]):    # specify the CDN sites using name or file
         if dc_name != "":
             if dc_name not in known_dc:
-                print(f"{dc_name}: dc not found")
+                print(f"\033[1;31m{dc_name}: dc not found\033[0m")
+                return
             else:
                 with open(f"../dataset/dc_lst/{dc_name}.txt") as f:
                     content = f.read()
@@ -34,13 +35,14 @@ class analysis:
                     content = f.read()
                     self.dc_lst = eval(content)
             except BaseException:
-                print("No such file.")
+                print("\033[1;31mNo such file.\033[0m")
+                return
         else:
-            print("Please specify the CDN you want to measure")
-            raise
+            print("\033[1;31mPlease specify the CDN you want to measure\033[0m")
+            return
         self.measure = measurement.Measurement(target=target, key_lst=key_lst)
         if len(mtr_lst) != 0:
-            print("retriving the results according to provided measurement ID")
+            print("retriving the results according to provided measurement ID ...")
             self.measure.getmtrid(mtr_lst)
         else:
             print("initializing the measurement")
@@ -50,7 +52,7 @@ class analysis:
         self.mapping_dc_lst = []             # how many dc are mapped with phop
         self.repr_phop = {}                  # which phop can represent the site
         self.key_lst = key_lst               # store the key_lst
-        print("done")
+        print("\033[1;32mdone\033[0m")
 
     def geolocate(self):  # geolocate the pen-hop
         def hoiho(rdns):
@@ -195,8 +197,8 @@ class analysis:
             self.phop_pd = self.phop_pd[~pd.isna(self.phop_pd["location"])]
             #print(self.phop_pd)
         except Exception as e:
-            print(e)
-            print("something error when geolocating phop_pd")
+            print("\033[1;31m%s\033[0m" % str(e))
+            print("\033[1;31msomething error when geolocating phop_pd\033[0m")
 
     def mapsite(self):
         def DC_tracer(geo):
@@ -218,10 +220,11 @@ class analysis:
             print("mapping phop to the site ...")
             self.phop_pd['mapped_site'] = self.phop_pd['location'].apply(lambda x: DC_tracer(x))
             self.mapping_dc_lst = self.phop_pd['mapped_site'].value_counts().index.to_list()  # mapped site
-            print(f"In total, using RIPE Atlas can resolve {len(self.mapping_dc_lst)} sites with {len(self.dc_lst)-len(self.mapping_dc_lst)} sites left unresolvable.")
+            # print(f"In total, using RIPE Atlas can resolve {len(self.mapping_dc_lst)} sites with {len(self.dc_lst)-len(self.mapping_dc_lst)} sites left unresolvable.")
+            print(f"\033[1;32mIn total, using RIPE Atlas can resolve {len(self.mapping_dc_lst)} sites with {len(self.dc_lst)-len(self.mapping_dc_lst)} sites left unresolvable.\033[0m")
         except Exception as e:
-            print(e)
-            print("something error when mapping sites")
+            print("\033[1;31m%s\033[0m" % str(e))
+            print("\033[1;31msomething error when mapping sites\033[0m")
 
     def reprePhop(self):  # we want to know which phop is close enough to be unicast representatives
         def check_ip_ping(ip):
@@ -279,6 +282,7 @@ class analysis:
                     exit_counter += 1
             print("\r", end="")
             print("Get the results: {:.1f}%: ".format(exit_counter / self.phop_pd.shape[0] * 100), "▋" * (exit_counter * 50 // self.phop_pd.shape[0]), end="")
+            #print("\033[1;32mGet the results: {:.1f}%: \033[0m".format(exit_counter / self.phop_pd.shape[0] * 100), "▋" * (exit_counter * 50 // self.phop_pd.shape[0]), end="", flush=True)
             sys.stdout.flush()
             # print(f"\r{exit_counter}/{self.phop_pd.shape[0]}", end="")
 
@@ -299,7 +303,8 @@ class analysis:
         #         else:
         #             if great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km < self.repr_phop[mapped_site][1] and check_ip_ping(phop.name) and not bogonip(phop.name):
         #                 self.repr_phop[mapped_site] = [phop.name, great_circle((phop_lat, phop_lon), (site_lat, site_lon)).km]
-        print(f"In total, we can find {len(self.repr_phop)} sites' unicast representitives.")
+        print("\033[1;32mIn total, we can find {} sites' unicast representitives.\033[0m".format(len(self.repr_phop)))
+        #print(f"In total, we can find {len(self.repr_phop)} sites' unicast representitives.")
 
     def geoanalysis(self):          # we want to know how many probes are routed to the closest site geographically
         def siteRank(data):
@@ -318,10 +323,9 @@ class analysis:
         self.measure.measure_pd['lat'] = self.measure.measure_pd['location'].str[1]
         self.measure.measure_pd['lon'] = self.measure.measure_pd['location'].str[0]
         self.measure.measure_pd['site_rank'] = self.measure.measure_pd.apply(lambda x: siteRank(x), axis=1)
-        print(f"{round(len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])/len(self.measure.measure_pd)*100,1)}% ({len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])}/{len(self.measure.measure_pd)}) probes are routed to the closest site")
-        # print(self.measure.measure_pd['site_rank'].value_counts().head(5))
-        # print("...")
-        # print(self.measure.measure_pd['site_rank'].value_counts.tail(5))
+        print("\033[1;32m{:.1f}% ({}/{}) probes are routed to the closest site\033[0m".format(round(len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])/len(self.measure.measure_pd)*100, 1), len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0]), len(self.measure.measure_pd)))
+        #print(f"{round(len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])/len(self.measure.measure_pd)*100,1)}% ({len(self.measure.measure_pd[self.measure.measure_pd['site_rank']==0])}/{len(self.measure.measure_pd)}) probes are routed to the closest site")
+
 
         "merge"
         # dist = [great_circle((x.split("|")[1].split(",")[0], x.split("|")[1].split(",")[1]), (data['lat'],data['lon'])).km for x in self.mapping_dc_lst]
@@ -394,6 +398,7 @@ class analysis:
                         exit_counter += 1
                 print("\r", end="")
                 print("Get the results: {:.1f}%: ".format(done_counter / len(msm_id_lst) * 100), "▋" * (done_counter * 50 // len(msm_id_lst)), end="")
+                # print("\033[1;32mGet the results: {:.1f}%: \033[0m".format(done_counter / len(msm_id_lst) * 100), "▋" * (done_counter * 50 // len(msm_id_lst)), end="", flush=True)
                 sys.stdout.flush()
                 # print(f"\r{done_counter}/{len(msm_id_lst)}", end="")
 
@@ -433,5 +438,6 @@ class analysis:
         tqdm.pandas(desc="analyzing")
         self.rtt_pd['rtt_rank'] = self.rtt_pd.progress_apply(lambda x: sortRTT(x), axis=1)
 
-        print(
-            f"Of {len(self.measure.measure_pd)} probes, we sucessfully analyze {len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])} probes' rtt performance. As a result, {round(len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])/len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])*100,1)}% ({len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])}/{len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])}) probes are routed to the lowest-latency site")
+        # print(
+        #     f"Of {len(self.measure.measure_pd)} probes, we sucessfully analyze {len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])} probes' rtt performance. As a result, {round(len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])/len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])*100,1)}% ({len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])}/{len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])}) probes are routed to the lowest-latency site")
+        print("\033[1;32mOf {} probes, we successfully analyze {} probes' rtt performance. As a result, {:.1f}% ({}/{}) probes are routed to the lowest-latency site\033[0m".format(len(self.measure.measure_pd), len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1]), round(len(self.rtt_pd[self.rtt_pd['rtt_rank']==0])/len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])*100, 1), len(self.rtt_pd[self.rtt_pd['rtt_rank']==0]), len(self.rtt_pd[self.rtt_pd['rtt_rank']!=-1])))

@@ -116,7 +116,8 @@ class Measurement:
 
     def measurement(self, fn):
         if len(self.key_lst) == 0:
-            print("please provide your RIPE Atlas keys")
+            print("\033[1;31mplease provide your RIPE Atlas keys\033[0m")
+            return
         if len(self.prb_lst) != 0:
             num = len(self.prb_lst) / 1000
             probe_lst = np.array_split(self.prb_lst, num + 1)
@@ -142,8 +143,9 @@ class Measurement:
                 if mid != "fail":
                     self.mtr_mid.append(mid)
                 else:
-                    print(f"measurement fail, your finished measurement id is {self.mtr_mid}")
-        print("measurement done!")
+                    print(f"\033[1;31mmeasurement fail, your finished measurement id is {self.mtr_mid}\033[0m")
+                    return
+        print("\033[1;32mmeasurement done!\033[0m")
         # if len(mtr_mid) == 0:
         #     with open(f"../dataset/measurement_id/{filename}", "w+") as f:
         #         f.write(" ".join(map(str,sprobe_lst)))
@@ -203,7 +205,8 @@ class Measurement:
             # self.measurement()
             # if len(self.mtr_mid) == 0:
             #     return
-            print("Please first run measurement!")
+            print("\033[1;31mPlease first run measurement!\033[0m")
+            return
         measure_pd_lst = [0 for i in range(len(self.mtr_mid))]
 
         # 多线程
@@ -231,7 +234,7 @@ class Measurement:
                 if not thread.is_alive(): 
                     exit_counter += 1
             print("\r", end="")
-            print("%-15s"%("Get the results"),"progress: %5.1f%%: "%(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)), end="")
+            print("%-15s"%("Get results"),"progress: %5.1f%%: "%(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)))
 
 
             sys.stdout.flush()
@@ -241,7 +244,7 @@ class Measurement:
                 if done_counter != exit_counter:
                     raise Exception("retriving error")
                 break
-        print()
+        #print()
         # 结束
 
 

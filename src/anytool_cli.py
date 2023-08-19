@@ -57,17 +57,17 @@ class MainCmd(cmd.Cmd):
             self.test_analysis = analysis.analysis(key_lst=args.key, target=args.target, dc_name=args.name, dc_file=args.file, mtr_lst=args.mid)
 
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_built_in(self, arg):
         try:
-            print("The following anycast deployments are already measured by anytool. You can use 'choose [name]' command to see the results. Note: R means regional anycast and G means global anycast")
+            print("\033[1;34mThe following anycast deployments are already measured by anytool. You can use 'choose [name]' command to see the results. Note: R means regional anycast and G means global anycast\033[0m")
             i = 1
             for item in built_in:
                 print(f"{i}:{item}")
                 i = i + 1
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_choose(self, arg):
         parser = argparse.ArgumentParser()
@@ -91,9 +91,10 @@ class MainCmd(cmd.Cmd):
             if self.test_analysis is None:
                 print("Please get the results first")
                 return
-            print(self.test_analysis.measure.measure_pd)
+            print("\033[1;34m{}\033[0m".format(self.test_analysis.measure.measure_pd))
+            #print(self.test_analysis.measure.measure_pd)
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_save_result(self, arg):
         parser = argparse.ArgumentParser()
@@ -103,39 +104,41 @@ class MainCmd(cmd.Cmd):
             if args is None:
                 return
             if self.test_analysis is None:
-                print("Please get the results first")
+                print("\033[1;31mPlease get the results first\033[0m")
                 return
             self.test_analysis.measure.measure_pd.to_csv(args.location)
             #self.test_analysis.measure.measure_pd
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_map_site(self, arg):
         try:
             if self.test_analysis is None:
-                print("Please get the results first")
+                print("\033[1;31mPlease get the results first\033[0m")
                 return
             self.test_analysis.mapsite()
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_select_unirepre(self, arg):
         try:
             if self.test_analysis is None:
-                print("'analysis' first")
+                print("\033[1;31m' get result first\033[0m")
                 return
             self.test_analysis.reprePhop()
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_geo_analyze(self, arg):
         try:
             if self.test_analysis is None:
-                print("'analysis' first")
+                print("\033[1;31m get result first\033[0m")
                 return
             self.test_analysis.geoanalysis()
+            with open("temp.pkl", "wb") as f:
+                pickle.dump(self.test_analysis, f)
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def do_rtt_analyze(self, arg):
         try:
@@ -145,12 +148,12 @@ class MainCmd(cmd.Cmd):
             except BaseException:
                 pass
             if self.test_analysis is None:
-                print("'analysis' first")
+                print("\033[1;31m get result first\033[0m")
                 return
             arg = "../test/imperva/ping_mid.txt"
             self.test_analysis.rttanalysis(arg)
         except Exception as e:
-            print(e)
+            print("\033[1;31m%s\033[0m" % str(e))
 
     def emptyline(self):
         pass
@@ -171,7 +174,7 @@ class MainCmd(cmd.Cmd):
         if cmd in self.aliases:
             self.aliases[cmd](arg)
         else:
-            print("*** Unknown syntax: %s" % line)
+            print("\033[1;31m*** Unknown syntax: %s\033[0m" % line)
 
 
 if __name__ == "__main__":
