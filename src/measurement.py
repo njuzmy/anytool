@@ -234,9 +234,7 @@ class Measurement:
                 if not thread.is_alive(): 
                     exit_counter += 1
             print("\r", end="")
-            print("%-15s"%("Get results"),"progress: %5.1f%%: "%(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)))
-
-
+            print("%-15s"%("Get results"),"progress: %5.1f%%: "%(done_counter/len(self.mtr_mid)*100), "▋" * (done_counter * 50 // len(self.mtr_mid)), end="")
             sys.stdout.flush()
             #print(f"\r{done_counter}/{len(self.mtr_mid)}", end="")
 

@@ -52,6 +52,7 @@ class analysis:
         self.mapping_dc_lst = []             # how many dc are mapped with phop
         self.repr_phop = {}                  # which phop can represent the site
         self.key_lst = key_lst               # store the key_lst
+        print()
         print("\033[1;32mdone\033[0m")
 
     def geolocate(self):  # geolocate the pen-hop
