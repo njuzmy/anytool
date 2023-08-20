@@ -135,18 +135,18 @@ class MainCmd(cmd.Cmd):
                 print("\033[1;31m get result first\033[0m")
                 return
             self.test_analysis.geoanalysis()
-            with open("temp.pkl", "wb") as f:
-                pickle.dump(self.test_analysis, f)
+            # with open("temp.pkl", "wb") as f:
+            #     pickle.dump(self.test_analysis, f)
         except Exception as e:
             print("\033[1;31m%s\033[0m" % str(e))
 
     def do_rtt_analyze(self, arg):
         try:
-            try:
-                with open("temp.pkl", "rb") as f:
-                    self.test_analysis = pickle.load(f)
-            except BaseException:
-                pass
+            # try:
+            #     with open("temp.pkl", "rb") as f:
+            #         self.test_analysis = pickle.load(f)
+            # except BaseException:
+            #     pass
             if self.test_analysis is None:
                 print("\033[1;31m get result first\033[0m")
                 return
