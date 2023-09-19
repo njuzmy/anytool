@@ -41,8 +41,28 @@ If you do not designate the probe list, we will use the [default one](./dataset/
 
 ```bash
 # An example of initializing the measurement
+Anytool> get_result -n CDN_NAME -t TARGET -m MEASUREMENT_ID
+or
+Anytool> get_result -n CDN_NAME -t TARGET -k RIPE_KEY
 ```
 
+We also provide built-in measurements for researchers:
+> imperva-ns
+> imperva-cdn
+> edgio-ns
+> edgio3-cdn
+> edgio4-cdn
+> cloudflare
+> akamai
+you can choose any anycast deployment to do further analysis:
+```bash
+Anytool> built_in
+Anytool> choose -n ANYCAST_ID
+```
+you can also use the "show_result" command to see the complete measurement data:
+```bash
+Anytool> show_result
+```
 
 
 ### Analysis
@@ -56,4 +76,23 @@ We have integrated the measurement module into the analysis phase, enabling auto
 Additionally, you are also required to provide the site list of the deployments you want to measure, along with their geolocation information. You can place the site list file [here](./dataset/dc_lst), and it should have the same format as the files in the directory.
 We also offer site lists for some CDNs such as Cloudflare, Imperva, Akamai, etc. However, please note that these site lists were last updated in June 2023 and are not frequently updated. Therefore, if you want to ensure that your measurements are up-to-date, please provide the latest site lists. To use our provided site lists, you can simply provide the CDN name listed in the [site directory](./dataset/dc_lst)
 
-We provide a two-fold analysis of the measurement data---geolocation and latency. You can 
+We provide a two-fold analysis of the measurement data---geolocation and latency. For geolocation analysis, Anytool can tell how many probes are routed to their closest sites. For latency analysis, Anytool will tell how many probes are routed to their lowest-latency sites. Before the analysis, you should first do site mapping and select unicast representatives. For example, when you want to make a geolocation analysis:
+```bash
+Anytool> map_site
+Anytool> geo_analysis
+```
+Besides, if you want to make a latency analysis:
+```bash
+Anytool> select_unirepre
+Anytool> rtt_analysis
+```
+
+## DEMO
+We provide a simple DEMO here. Notably, the ability of Anytool is far more plentiful than what DEMO shows.
+
+
+https://github.com/njuzmy/anytool/assets/38530443/1588df65-93a2-4c44-95e7-70c529f57249
+
+
+
+
